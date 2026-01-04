@@ -356,13 +356,17 @@
         top: 0;
         left: -100%;
         /* Hide off-screen */
-        height: 100vh;
+        height: 100dvh;
+        /* Use dynamic viewport height */
         z-index: 1000;
         background: rgba(255, 255, 255, 0.95);
         border-right: 1px solid rgba(0, 0, 0, 0.1);
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         transition: left 0.3s ease;
-        width: 260px;
+        width: 280px;
+        /* Slightly wider for better touch targets */
+        padding-bottom: 3rem;
+        /* Extra padding for bottom bars */
     }
 
     .sidebar.mobile-open {
