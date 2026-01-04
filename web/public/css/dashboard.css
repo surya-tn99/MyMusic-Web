@@ -407,6 +407,8 @@
 
     .content-wrapper {
         padding: 2rem 0;
+        width: 100%;
+        /* Ensure full width for centering */
         /* Top/Bottom 2rem, Left/Right 0 */
         align-items: flex-start;
         padding-bottom: 80px;
@@ -554,4 +556,422 @@
 .section-active {
     display: block;
     width: 100%;
+}
+
+/* --- Radio & Music Player Styles --- */
+
+/* Radio Queue List */
+.radio-queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 120px;
+    /* Space for bottom player */
+}
+
+.queue-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.queue-item:hover {
+    background: rgba(255, 255, 255, 0.6);
+    transform: translateX(5px);
+}
+
+.queue-item.playing {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--accent);
+}
+
+.queue-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #ccc;
+}
+
+.queue-info {
+    flex: 1;
+}
+
+.queue-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.queue-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.queue-duration {
+    font-family: monospace;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* --- Music Player Bar (Desktop Default) --- */
+.music-player {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    /* Center with some margin */
+    max-width: 1000px;
+    height: 80px;
+
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+    border-radius: 20px;
+    padding: 0 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1000;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.music-player.hidden {
+    transform: translate(-50%, 150%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Player Info (Left) */
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 30%;
+    min-width: 200px;
+}
+
+.player-thumb-wrapper {
+    position: relative;
+    width: 56px;
+    height: 56px;
+}
+
+.player-thumb {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    /* Slightly squarer for industrial look */
+    object-fit: cover;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.player-thumb.spinner {
+    /* animation: spin 10s linear infinite; */
+    /* Disabled by user request */
+    border-radius: 12px;
+    /* Static square */
+}
+
+/* @keyframes spin { 100% { transform: rotate(360deg); } } */
+.player-thumb:not(.playing-state) {
+    /* animation-play-state: paused; */
+}
+
+.player-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.player-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-artist {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Controls (Center) */
+.player-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    /* Take center space */
+    gap: 4px;
+}
+
+.control-buttons {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.control-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 8px;
+}
+
+.control-btn:hover {
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.control-btn.small svg {
+    /* Industrial/Technical look */
+    fill: currentColor;
+}
+
+.control-btn.main {
+    width: 48px;
+    height: 48px;
+    background: var(--accent);
+    color: white;
+    border-radius: 14px;
+    /* Squarish */
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.control-btn.main:hover {
+    transform: scale(1.05);
+    background: #2563eb;
+}
+
+/* Logic for Toggle Play/Pause Icons managed by JS via .hidden class on svg */
+
+.player-progress-container {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.seek-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    outline: none;
+    cursor: pointer;
+}
+
+.seek-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    /* Square thumb */
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.seek-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.player-extras {
+    width: 30%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+.volume-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 120px;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    cursor: pointer;
+}
+
+
+/* Mobile Header (Hidden on Desktop) */
+.player-header-mobile {
+    display: none;
+    width: 100%;
+    padding: 20px;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* --- Responsive / Mobile Logic --- */
+@media (max-width: 768px) {
+    .music-player {
+        bottom: 0px;
+        /* Flush with bottom */
+        left: 0;
+        transform: none;
+        width: 100%;
+        max-width: none;
+        border-radius: 0;
+        border-right: none;
+        border-left: none;
+        border-bottom: none;
+
+        /* Mini Player Layout */
+        height: 70px;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.95);
+        /* More opaque on mobile */
+
+        /* Transition for Max Mode */
+        flex-direction: row;
+        flex-wrap: nowrap;
+    }
+
+    /* Target state when Fullscreen (Max Mode) */
+    .music-player.expanded {
+        height: 100dvh;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 0;
+        background: #f8fafc;
+        /* Solid bg */
+        z-index: 2000;
+        overflow-y: auto;
+        /* Allow scrolling if content is too tall */
+    }
+
+    /* Initial Mini Mode: Hide Progress/Header/Extras */
+    .music-player:not(.expanded) .player-progress-container,
+    .music-player:not(.expanded) .player-extras,
+    .music-player:not(.expanded) .player-header-mobile {
+        display: none;
+    }
+
+    /* Expand Click Area */
+    .music-player:not(.expanded) .player-info {
+        flex: 1;
+        /* Takes free space */
+        cursor: pointer;
+    }
+
+    /* Layout Adjustments for Expanded Mode */
+    .music-player.expanded .player-header-mobile {
+        display: flex;
+        /* Show header */
+    }
+
+    .music-player.expanded .player-info {
+        width: 100%;
+        flex-direction: column;
+        margin-top: 40px;
+        margin-bottom: 40px;
+        text-align: center;
+    }
+
+    .music-player.expanded .player-thumb-wrapper {
+        width: 250px;
+        height: 250px;
+        margin-bottom: 20px;
+    }
+
+    .music-player.expanded .player-thumb {
+        /* Keep large art */
+        border-radius: 20px;
+    }
+
+    .music-player.expanded .player-title {
+        font-size: 1.6rem;
+        margin-bottom: 8px;
+    }
+
+    .music-player.expanded .player-artist {
+        font-size: 1.1rem;
+    }
+
+    /* Controls in Expanded Mode */
+    .music-player.expanded .player-controls {
+        width: 100%;
+        padding: 0 30px;
+        margin-bottom: 40px;
+        flex: 0;
+        flex-direction: column-reverse;
+        /* Progress on top, buttons below */
+        gap: 20px;
+    }
+
+    .music-player.expanded .control-buttons {
+        gap: 40px;
+        margin-bottom: 30px;
+    }
+
+    .music-player.expanded .control-btn.main {
+        width: 72px;
+        height: 72px;
+    }
+
+    .music-player.expanded .control-btn.small svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    .music-player.expanded .player-progress-container {
+        display: flex;
+        /* Show progress */
+    }
+
+    /* Extras in Expanded */
+    .music-player.expanded .player-extras {
+        display: flex;
+        width: 100%;
+        padding: 20px;
+        justify-content: center;
+    }
 }

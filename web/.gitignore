@@ -4,4 +4,3 @@ node_modules/
 *.log
 cookies.txt
 package-lock.json
-downloads   

@@ -67,6 +67,32 @@ if (form) {
     const navMemory = document.getElementById('navMemory');
     const downloadsSection = document.getElementById('downloadsSection');
     const memorySection = document.getElementById('memorySection');
+    const radioSection = document.getElementById('radioSection');
+    const navRadio = document.getElementById('navRadio');
+
+    // --- Music Player State ---
+    const player = {
+        queue: [],
+        currentIndex: 0,
+        audio: new Audio(),
+        isPlaying: false
+    };
+
+    const musicPlayerEl = document.getElementById('musicPlayer');
+    const playerThumb = document.getElementById('playerThumb');
+    const playerTitle = document.getElementById('playerTitle');
+    const playerArtist = document.getElementById('playerArtist');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const seekSlider = document.getElementById('seekSlider');
+    const currentTimeEl = document.getElementById('currentTime');
+    const totalTimeEl = document.getElementById('totalTime');
+    const playerMinimize = document.getElementById('playerMinimize');
+    const playerInfoArea = document.getElementById('playerInfoArea');
+    const volumeSlider = document.getElementById('volumeSlider');
 
     // --- Navigation Logic (Hash Based) ---
     function handleHashChange() {
@@ -81,10 +107,23 @@ if (form) {
             if (el) el.classList.add('active');
 
             if (navDownloads) navDownloads.classList.remove('active');
+            if (navRadio) navRadio.classList.remove('active');
             downloadsSection.classList.add('hidden');
             memorySection.classList.remove('hidden');
+            radioSection.classList.add('hidden');
             if (contentWrapper) contentWrapper.classList.add('align-top');
             loadMemory();
+        } else if (hash === '#radio') {
+            const el = document.getElementById('navRadio');
+            if (el) el.classList.add('active');
+
+            if (navDownloads) navDownloads.classList.remove('active');
+            if (navMemory) navMemory.classList.remove('active');
+            downloadsSection.classList.add('hidden');
+            memorySection.classList.add('hidden');
+            radioSection.classList.remove('hidden');
+            if (contentWrapper) contentWrapper.classList.add('align-top');
+            loadRadio();
         } else if (hash === '#settings') {
             // Placeholder for settings
             const el = document.querySelector('a[href="#settings"]');
@@ -95,8 +134,10 @@ if (form) {
             const el = document.getElementById('navDownloads');
             if (el) el.classList.add('active');
 
+            if (navRadio) navRadio.classList.remove('active');
             downloadsSection.classList.remove('hidden');
             memorySection.classList.add('hidden');
+            radioSection.classList.add('hidden');
             if (contentWrapper) contentWrapper.classList.remove('align-top');
         }
     }
@@ -195,6 +236,192 @@ if (form) {
             applyFilter(e.target.dataset.filter);
         });
     });
+
+
+    // --- Radio Logic ---
+
+    async function loadRadio() {
+        try {
+            const res = await fetch('/api/downloads/history');
+            const allFiles = await res.json();
+            // Filter strictly for Audio
+            player.queue = allFiles.filter(f => f.type === 'audio');
+
+            document.getElementById('queueCount').textContent = `${player.queue.length} Songs`;
+            renderQueue();
+
+            // If player has no track, queue first one
+            if (player.audio.src === '' && player.queue.length > 0) {
+                loadTrack(0, false);
+            }
+        } catch (err) {
+            console.error('Failed to load radio', err);
+        }
+    }
+
+    function renderQueue() {
+        const list = document.getElementById('radioQueue');
+        list.innerHTML = '';
+
+        player.queue.forEach((song, index) => {
+            const item = document.createElement('div');
+            item.className = `queue-item ${index === player.currentIndex ? 'playing' : ''}`;
+            item.onclick = () => {
+                loadTrack(index, true);
+            };
+
+            const thumb = song.thumbnail || 'assert/favicon.png';
+            const duration = '3:00'; // Placeholder as we don't have meta yet
+
+            item.innerHTML = `
+                <img src="${thumb}" class="queue-thumb" loading="lazy">
+                <div class="queue-info">
+                    <div class="queue-title">${song.name}</div>
+                    <div class="queue-meta">MyMusic Radio</div>
+                </div>
+                <!-- <div class="queue-duration">${duration}</div> -->
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    // --- Audio Player Core ---
+
+    function loadTrack(index, autoPlay = true) {
+        if (index < 0 || index >= player.queue.length) return;
+
+        player.currentIndex = index;
+        const song = player.queue[index];
+
+        player.audio.src = song.url;
+        player.audio.load();
+
+        updatePlayerUI(song);
+        updateQueueUI();
+        updateMediaSession(song);
+
+        if (autoPlay) {
+            playTrack();
+        }
+    }
+
+    function playTrack() {
+        player.audio.play()
+            .then(() => {
+                player.isPlaying = true;
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                playerThumb.classList.add('playing-state');
+                musicPlayerEl.classList.remove('hidden'); // Show player
+                navigator.mediaSession.playbackState = 'playing';
+            })
+            .catch(e => console.error("Play failed", e));
+    }
+
+    function pauseTrack() {
+        player.audio.pause();
+        player.isPlaying = false;
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playerThumb.classList.remove('playing-state');
+        navigator.mediaSession.playbackState = 'paused';
+    }
+
+    function prevTrack() {
+        let newIndex = player.currentIndex - 1;
+        if (newIndex < 0) newIndex = player.queue.length - 1; // Loop
+        loadTrack(newIndex, true);
+    }
+
+    function nextTrack() {
+        let newIndex = player.currentIndex + 1;
+        if (newIndex >= player.queue.length) newIndex = 0; // Loop
+        loadTrack(newIndex, true);
+    }
+
+    function updatePlayerUI(song) {
+        playerTitle.textContent = song.name;
+        playerArtist.textContent = "MyMusic Radio"; // or extract artist if possible
+        playerThumb.src = song.thumbnail || 'assert/favicon.png';
+    }
+
+    function updateQueueUI() {
+        // Simple re-render to update 'playing' class
+        // Optimization: just toggle class on existing elements could be better
+        renderQueue();
+    }
+
+    function updateMediaSession(song) {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: song.name,
+                artist: 'MyMusic Radio',
+                album: 'Downloads',
+                artwork: [
+                    { src: song.thumbnail || 'assert/favicon.png', sizes: '512x512', type: 'image/png' }
+                ]
+            });
+
+            navigator.mediaSession.setActionHandler('play', playTrack);
+            navigator.mediaSession.setActionHandler('pause', pauseTrack);
+            navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+            navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+        }
+    }
+
+    // --- Event Listeners (Player) ---
+    playBtn.addEventListener('click', () => {
+        if (player.isPlaying) pauseTrack();
+        else playTrack();
+    });
+
+    prevBtn.addEventListener('click', prevTrack);
+    nextBtn.addEventListener('click', nextTrack);
+
+    player.audio.addEventListener('timeupdate', () => {
+        const { currentTime, duration } = player.audio;
+        if (isNaN(duration)) return;
+
+        const progressPercent = (currentTime / duration) * 100;
+        seekSlider.value = progressPercent;
+
+        // Format Time
+        const formatTime = (t) => {
+            const min = Math.floor(t / 60);
+            const sec = Math.floor(t % 60);
+            return `${min}:${sec < 10 ? '0' + sec : sec}`;
+        };
+
+        currentTimeEl.textContent = formatTime(currentTime);
+        totalTimeEl.textContent = formatTime(duration);
+    });
+
+    player.audio.addEventListener('ended', nextTrack);
+
+    seekSlider.addEventListener('input', () => {
+        const seekTo = player.audio.duration * (seekSlider.value / 100);
+        player.audio.currentTime = seekTo;
+    });
+
+    // Mobile Player Toggle
+    // Click on thumbnail/info expands logic handled by CSS classes?
+    // We added expanded class in CSS logic.
+    playerInfoArea.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+            musicPlayerEl.classList.add('expanded');
+        }
+    });
+
+    playerMinimize.addEventListener('click', (e) => {
+        e.stopPropagation();
+        musicPlayerEl.classList.remove('expanded');
+    });
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            player.audio.volume = e.target.value;
+        });
+    }
 
 
     // --- Download Logic ---
