@@ -33,8 +33,17 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Root Route (Must be before static to handle / logic)
+app.get('/', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.sendFile(path.join(__dirname, '../public/index.html'));
+    } else {
+        res.sendFile(path.join(__dirname, '../public/login.html'));
+    }
+});
+
 // Static Files (Frontend)
-app.use(express.static('public'));
+app.use(express.static('public')); // Will serve css/js/img etc.
 app.use('/downloads', express.static(path.join(__dirname, '../downloads')));
 
 // Favicon
@@ -42,24 +51,14 @@ app.get('/favicon.ico', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/assert/favicon.png'));
 });
 
-// Root Redirect
-app.get('/', (req, res) => {
-    if (req.isAuthenticated()) {
-        // If logged in, go to a dashboard (we'll need to create one, or just send a message for now)
-        // For now, let's just send a success message/dashboard placeholder
-        res.send(`<h1>Welcome ${req.user.displayName || 'User'}</h1><a href="/auth/logout">Logout</a>`);
-    } else {
-        res.redirect('/login.html');
-    }
-});
-
 // Routes
 // Mount Auth Routes
 app.use('/auth', authRoutes);
 
 // Protect API routes if needed, or protect specific endpoints
-// app.use('/api', ensureAuthenticated, routes);
-app.use('/api', routes); // Temporary: Bypass auth for debugging
+// Protect API routes
+app.use('/api', ensureAuthenticated, routes);
+// app.use('/api', routes); // Temporary: Bypass auth for debugging
 
 // Error handling middleware
 app.use((err, req, res, next) => {

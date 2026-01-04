@@ -237,16 +237,9 @@ if (form) {
     // Reset Handler (attached to button if needed, but form submit handles it)
     downloadBtn.addEventListener('click', (e) => {
         if (downloadBtn.textContent === 'Download Another') {
-            e.preventDefault(); // Don't submit
-            e.stopPropagation(); // Stop bubbling
-
-            // RESET STATE
-            videoUrlInput.value = '';
-            mediaPreview.classList.add('hidden');
-            statusArea.classList.add('hidden');
-            progressBar.style.width = '0%';
-            downloadBtn.textContent = 'Start Download';
-            downloadBtn.classList.remove('hidden'); // Ensure visible
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.reload();
             return false;
         }
     });
@@ -281,6 +274,11 @@ if (form) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url, format })
             });
+
+            if (response.status === 401) {
+                window.location.href = '/login.html';
+                return;
+            }
 
             const data = await response.json();
 
