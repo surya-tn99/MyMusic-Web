@@ -136,7 +136,12 @@ exports.startDownload = (req, res) => {
     const startProcess = (browser) => {
         console.log(`[Download ${downloadId}] Launching with browser: ${browser}`);
 
-        const args = ['-o', path.join(targetDir, '%(title)s.%(ext)s')];
+        const args = [
+            '-P', targetDir,
+            '-P', `thumbnail:${thumbDir}`,
+            '-o', '%(title)s.%(ext)s',
+            '--write-thumbnail'
+        ];
 
         if (type === 'video') {
             args.push('-f', 'bestvideo+bestaudio/best');

@@ -122,7 +122,7 @@
 .content-wrapper {
     flex: 1;
     overflow-y: auto;
-    padding: 0rem;
+    padding: 2rem 0.5rem;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -356,13 +356,16 @@
         top: 0;
         left: -100%;
         /* Hide off-screen */
-        height: 100vh;
+        height: 100dvh;
+        /* Use dynamic viewport height */
         z-index: 1000;
         background: rgba(255, 255, 255, 0.95);
         border-right: 1px solid rgba(0, 0, 0, 0.1);
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         transition: left 0.3s ease;
         width: 260px;
+        padding-bottom: 3rem;
+        /* Ensure bottom profile is visible */
     }
 
     .sidebar.mobile-open {
@@ -397,10 +400,21 @@
     .main-content {
         padding: 1rem;
         align-items: flex-start;
+        width: 100%;
+        /* Force full width */
+        height: 100dvh;
+    }
+
+    .content-wrapper {
+        padding: 2rem 0;
+        /* Top/Bottom 2rem, Left/Right 0 */
+        align-items: flex-start;
+        padding-bottom: 80px;
     }
 
     .download-card {
         padding: 1.5rem;
+        margin-top: 1rem;
     }
 
     .media-preview {
