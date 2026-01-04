@@ -6,6 +6,9 @@ const crypto = require('crypto');
 // Store active download streams: downloadId -> { res, keepAliveInterval }
 const activeDownloads = new Map();
 
+// Cache the working browser to save time on subsequent requests
+let cachedBrowser = null;
+
 // Helper: Promisified yt-dlp info fetch
 const fetchYtInfo = (executable, url, browser) => {
     return new Promise((resolve, reject) => {
@@ -20,12 +23,19 @@ const fetchYtInfo = (executable, url, browser) => {
             args.push('--cookies-from-browser', browser);
         }
 
+        console.log(`[Spawn] yt-dlp info fetch with browser: ${browser}`);
         const process = spawn(executable, args);
         let output = '';
         let error = '';
 
-        process.stdout.on('data', d => output += d.toString());
-        process.stderr.on('data', d => error += d.toString());
+        process.stdout.on('data', d => {
+            output += d.toString();
+        });
+        process.stderr.on('data', d => {
+            const errStr = d.toString();
+            console.error('[yt-dlp/info stderr]:', errStr);
+            error += errStr;
+        });
 
         process.on('close', code => {
             if (code === 0) resolve(output);
@@ -41,39 +51,48 @@ exports.getVideoInfo = async (req, res) => {
     const ytDlpPath = path.join(__dirname, '../../bin/yt-dlp');
     const executable = fs.existsSync(ytDlpPath) ? ytDlpPath : 'yt-dlp';
 
-    try {
-        console.log(`[Info] Trying with Firefox...`);
-        const output = await fetchYtInfo(executable, url, 'firefox');
+    // Helper to process info result
+    const processResult = (output) => {
         const info = JSON.parse(output);
-        return res.json({
+        return {
             title: info.title,
             thumbnail: info.thumbnail,
             duration: info.duration_string || info.duration,
             channel: info.uploader
-        });
+        };
+    };
+
+    // If we have a cached browser, try it first
+    if (cachedBrowser) {
+        console.log(`[Info] Using cached browser: ${cachedBrowser}`);
+        try {
+            const output = await fetchYtInfo(executable, url, cachedBrowser);
+            return res.json(processResult(output));
+        } catch (err) {
+            console.warn(`[Info] Cached browser ${cachedBrowser} failed. Resetting cache and retrying discovery...`);
+            cachedBrowser = null;
+            // Fall through to discovery logic
+        }
+    }
+
+    // Discovery Chain
+    try {
+        console.log(`[Info] Trying with Firefox...`);
+        const output = await fetchYtInfo(executable, url, 'firefox');
+        cachedBrowser = 'firefox';
+        return res.json(processResult(output));
     } catch (firefoxError) {
-        console.warn(`[Info] Firefox failed. Retrying with Chrome...`); //, firefoxError.split('\n')[0]
+        console.warn(`[Info] Firefox failed. Retrying with Chrome...`);
         try {
             const output = await fetchYtInfo(executable, url, 'chrome');
-            const info = JSON.parse(output);
-            return res.json({
-                title: info.title,
-                thumbnail: info.thumbnail,
-                duration: info.duration_string || info.duration,
-                channel: info.uploader
-            });
+            cachedBrowser = 'chrome';
+            return res.json(processResult(output));
         } catch (chromeError) {
             console.warn(`[Info] Chrome failed. Retrying without cookies...`);
             try {
-                // Final fallback: No cookies (works for public videos)
                 const output = await fetchYtInfo(executable, url, 'none');
-                const info = JSON.parse(output);
-                return res.json({
-                    title: info.title,
-                    thumbnail: info.thumbnail,
-                    duration: info.duration_string || info.duration,
-                    channel: info.uploader
-                });
+                cachedBrowser = 'none';
+                return res.json(processResult(output));
             } catch (noCookieError) {
                 console.error(`[Info] All attempts failed.`);
                 return res.status(500).json({ error: 'Failed to fetch info. Video might be restricted.' });
@@ -114,7 +133,7 @@ exports.startDownload = (req, res) => {
     });
 
     // --- Process Starter Function ---
-    const startProcess = (browser = 'firefox') => {
+    const startProcess = (browser) => {
         console.log(`[Download ${downloadId}] Launching with browser: ${browser}`);
 
         const args = ['-o', path.join(targetDir, '%(title)s.%(ext)s')];
@@ -130,18 +149,8 @@ exports.startDownload = (req, res) => {
 
         // Cookies
         if (browser !== 'none') {
-            // Check for local file first?
-            const cookiesPath = path.join(__dirname, '../../data/cookies.txt');
-            if (fs.existsSync(cookiesPath) && browser === 'file') {
-                args.push('--cookies', cookiesPath);
-            } else {
-                args.push('--cookies-from-browser', browser);
-            }
+            args.push('--cookies-from-browser', browser);
         }
-
-        // Also download thumbnail if mostly successful (optional, skipping inline arg for cleanliness as we have separate logical step usually, but adding here is fine)
-        // Note: We used to have a separate thumbnail step. Let's keep it simple and just let the main process ignore it or use a separate call if needed. 
-        // For now, let's assume the previous thumb logic was fine, but we'll focus on the main download retry.
 
         const ytDlp = spawn(executable, args);
         const downloadSession = activeDownloads.get(downloadId);
@@ -150,7 +159,6 @@ exports.startDownload = (req, res) => {
         let hasProgress = false;
 
         ytDlp.stdout.on('data', (data) => {
-            hasProgress = true;
             const line = data.toString();
 
             const progressMatch = line.match(/(\d+\.?\d*)%\s+of\s+~?\s*([\d\.]+)(\w+)\s+at\s+([\d\.]+)(\w+\/s)/);
@@ -177,16 +185,27 @@ exports.startDownload = (req, res) => {
             }
         });
 
+        ytDlp.stderr.on('data', (data) => {
+            console.log(`[yt-dlp/DL stderr]: ${data.toString()}`); // Log ALL stderr to server console
+        });
+
         ytDlp.on('close', (code) => {
             if (code === 0) {
-                // Success
+                console.log(`[Download ${downloadId}] Success with ${browser}`);
+                cachedBrowser = browser; // Update/Confirm cache on success
                 broadcast(downloadId, { type: 'complete', status: 'completed', code });
                 setTimeout(() => activeDownloads.delete(downloadId), 10000);
             } else {
-                // Failure
                 console.error(`[Download ${downloadId}] Failed with ${browser} (Exit: ${code})`);
 
-                // Fallback Chain: Firefox -> Chrome -> None
+                // If we were using cached browser, clear it and fall back to chain
+                if (browser === cachedBrowser) {
+                    console.log('[Download] Cached browser failed. Starting discovery chain...');
+                    cachedBrowser = null;
+                    return startProcess('firefox'); // Start from top
+                }
+
+                // Discovery Chain
                 let nextBrowser = null;
                 if (browser === 'firefox') nextBrowser = 'chrome';
                 else if (browser === 'chrome') nextBrowser = 'none';
@@ -198,7 +217,6 @@ exports.startDownload = (req, res) => {
                     });
                     startProcess(nextBrowser);
                 } else {
-                    // All attempts failed
                     broadcast(downloadId, { type: 'complete', status: 'error', code });
                     setTimeout(() => activeDownloads.delete(downloadId), 10000);
                 }
@@ -206,10 +224,9 @@ exports.startDownload = (req, res) => {
         });
     }
 
-    // Start Chain
-    startProcess('firefox');
+    // Start with cached or default firefox
+    startProcess(cachedBrowser || 'firefox');
 
-    // Respond immediately
     res.json({ message: 'Download initiated', downloadId });
 };
 
@@ -292,10 +309,6 @@ exports.getDownloadHistory = (req, res) => {
 
     processDir(audioDir, 'audio');
     processDir(videoDir, 'video');
-
-    // Also support legacy files in root downloads for backward compatibility if needed, 
-    // or just ignore them. Let's ignore them to enforce new structure or move them?
-    // For now, let's just stick to the new structure.
 
     results.sort((a, b) => b.date - a.date);
     res.json(results);
