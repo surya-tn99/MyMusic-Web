@@ -126,6 +126,16 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    /* Hide scrollbar */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+}
+
+.content-wrapper::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
 }
 
 .content-wrapper.align-top {
@@ -341,11 +351,47 @@
     }
 
     .sidebar {
-        display: none;
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: -100%;
+        /* Hide off-screen */
+        height: 100vh;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        transition: left 0.3s ease;
+        width: 260px;
+    }
+
+    .sidebar.mobile-open {
+        left: 0;
+    }
+
+    .sidebar-brand {
+        padding: 1.5rem 1.5rem 0.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        margin-bottom: 1rem;
+    }
+
+    .sidebar-brand h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        background: linear-gradient(45deg, #2563eb, #db2777);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 600;
     }
 
     .mobile-only {
         display: block;
+    }
+
+    .glass-header {
+        width: 100%;
+        justify-content: space-between;
+        /* Ensure toggle and logo are spaced */
     }
 
     .main-content {
@@ -379,7 +425,11 @@
 .memory-header h2 {
     margin: 0;
     font-size: 1.8rem;
-    color: var(--text-primary);
+    background: linear-gradient(45deg, #2563eb, #db2777);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
 }
 
 .filter-buttons {

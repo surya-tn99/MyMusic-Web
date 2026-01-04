@@ -18,8 +18,22 @@ const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.querySelector('.sidebar');
 
 if (sidebarToggle && sidebar) {
-    sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
+    sidebarToggle.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent immediate closing if we add document listener
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('mobile-open');
+        } else {
+            sidebar.classList.toggle('collapsed');
+        }
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 768 && sidebar.classList.contains('mobile-open')) {
+            if (!sidebar.contains(e.target) && e.target !== sidebarToggle) {
+                sidebar.classList.remove('mobile-open');
+            }
+        }
     });
 }
 
