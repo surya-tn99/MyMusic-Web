@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MyMusic</title>
+    <link rel="shortcut icon" href="assert/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <nav class="nav-menu">
+                <a href="#downloads" class="nav-item active" id="navDownloads">
+                    <span class="icon">⬇</span> Downloads
+                </a>
+                <a href="#memory" class="nav-item" id="navMemory">
+                    <img src="assert/memory.png" alt="Icon" class="icon-img"> Memory
+                </a>
+                <a href="#settings" class="nav-item">
+                    <span class="icon">⚙</span> Settings
+                </a>
+            </nav>
+            <div class="user-profile">
+                <span id="username">User</span>
+                <a href="/auth/logout" class="logout-link">Logout</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="glass-header">
+                <button id="sidebarToggle" class="icon-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <h1 class="logo-small">MyMusic</h1>
+            </div>
+
+            <div class="content-wrapper">
+                <!-- Download Section -->
+                <section id="downloadsSection" class="section-active">
+                    <div class="glass-card download-card">
+                        <h2>Download Media</h2>
+                        <p class="subtitle">Paste a YouTube link to preview and download.</p>
+
+                        <form id="downloadForm" class="download-form">
+                            <div class="input-group search-bar">
+                                <input type="url" id="videoUrl" placeholder="Paste YouTube URL here..." required>
+                            </div>
+
+                            <!-- Media Preview Section -->
+                            <div id="mediaPreview" class="media-preview hidden">
+                                <img id="thumbnailImg" src="" alt="Thumbnail" class="thumbnail">
+                                <div class="media-info">
+                                    <h3 id="videoTitle" class="video-title">Video Title</h3>
+                                    <p id="videoChannel" class="video-channel">Channel Name</p>
+                                    <span id="videoDuration" class="badge">00:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Format Selection -->
+                            <div class="format-selection">
+                                <label class="radio-label">
+                                    <input type="radio" name="format" value="audio" checked>
+                                    <span class="radio-custom">Audio (MP3)</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="format" value="video">
+                                    <span class="radio-custom">Video (MP4)</span>
+                                </label>
+                            </div>
+
+                            <div id="statusArea" class="status-area hidden">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                </div>
+                                <p id="statusText">Processing...</p>
+                                <pre id="logOutput"></pre>
+                            </div>
+
+                            <div class="action-row">
+                                <button type="submit" id="downloadBtn" class="btn-primary">Start Download</button>
+                            </div>
+                    </div>
+                </section>
+
+                <!-- Memory Section -->
+                <section id="memorySection" class="hidden" style="width: 100%; max-width: 1200px;">
+                    <div class="memory-header">
+                        <h2>Downloaded Memory</h2>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="audio">Audio</button>
+                            <button class="filter-btn" data-filter="video">Video</button>
+                        </div>
+                    </div>
+
+                    <div id="memoryGrid" class="memory-grid">
+                        <!-- Items will be populated here -->
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
