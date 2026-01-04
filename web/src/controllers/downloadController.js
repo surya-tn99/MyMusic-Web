@@ -13,9 +13,12 @@ const fetchYtInfo = (executable, url, browser) => {
             '--dump-json',
             '--no-playlist',
             '--skip-download',
-            url,
-            '--cookies-from-browser', browser
+            url
         ];
+
+        if (browser && browser !== 'none') {
+            args.push('--cookies-from-browser', browser);
+        }
 
         const process = spawn(executable, args);
         let output = '';
@@ -49,7 +52,7 @@ exports.getVideoInfo = async (req, res) => {
             channel: info.uploader
         });
     } catch (firefoxError) {
-        console.warn(`[Info] Firefox failed, retrying with Chrome...`, firefoxError.split('\n')[0]);
+        console.warn(`[Info] Firefox failed. Retrying with Chrome...`); //, firefoxError.split('\n')[0]
         try {
             const output = await fetchYtInfo(executable, url, 'chrome');
             const info = JSON.parse(output);
@@ -60,8 +63,21 @@ exports.getVideoInfo = async (req, res) => {
                 channel: info.uploader
             });
         } catch (chromeError) {
-            console.error(`[Info] Chrome also failed.`, chromeError);
-            return res.status(500).json({ error: 'Failed to fetch video info (Browser cookies not found)' });
+            console.warn(`[Info] Chrome failed. Retrying without cookies...`);
+            try {
+                // Final fallback: No cookies (works for public videos)
+                const output = await fetchYtInfo(executable, url, 'none');
+                const info = JSON.parse(output);
+                return res.json({
+                    title: info.title,
+                    thumbnail: info.thumbnail,
+                    duration: info.duration_string || info.duration,
+                    channel: info.uploader
+                });
+            } catch (noCookieError) {
+                console.error(`[Info] All attempts failed.`);
+                return res.status(500).json({ error: 'Failed to fetch info. Video might be restricted.' });
+            }
         }
     }
 };
@@ -94,7 +110,7 @@ exports.startDownload = (req, res) => {
     activeDownloads.set(downloadId, {
         clients: [],
         progress: { percentage: 0, status: 'Starting...' },
-        process: null // Will be set by startProcess
+        process: null
     });
 
     // --- Process Starter Function ---
@@ -113,11 +129,14 @@ exports.startDownload = (req, res) => {
         args.push(url);
 
         // Cookies
-        const cookiesPath = path.join(__dirname, '../../data/cookies.txt');
-        if (fs.existsSync(cookiesPath)) {
-            args.push('--cookies', cookiesPath);
-        } else {
-            args.push('--cookies-from-browser', browser);
+        if (browser !== 'none') {
+            // Check for local file first?
+            const cookiesPath = path.join(__dirname, '../../data/cookies.txt');
+            if (fs.existsSync(cookiesPath) && browser === 'file') {
+                args.push('--cookies', cookiesPath);
+            } else {
+                args.push('--cookies-from-browser', browser);
+            }
         }
 
         // Also download thumbnail if mostly successful (optional, skipping inline arg for cleanliness as we have separate logical step usually, but adding here is fine)
@@ -167,17 +186,19 @@ exports.startDownload = (req, res) => {
                 // Failure
                 console.error(`[Download ${downloadId}] Failed with ${browser} (Exit: ${code})`);
 
-                // If it was Firefox and we failed (without creating a completed file), TRY CHROME
-                if (browser === 'firefox') {
+                // Fallback Chain: Firefox -> Chrome -> None
+                let nextBrowser = null;
+                if (browser === 'firefox') nextBrowser = 'chrome';
+                else if (browser === 'chrome') nextBrowser = 'none';
+
+                if (nextBrowser) {
                     broadcast(downloadId, {
                         type: 'progress',
-                        data: { percentage: 0, raw: 'Firefox cookies failed, retrying with Chrome...' }
+                        data: { percentage: 0, raw: `Auth failed (${browser}), retrying with ${nextBrowser}...` }
                     });
-
-                    // RETRY
-                    startProcess('chrome');
+                    startProcess(nextBrowser);
                 } else {
-                    // Chrome also failed
+                    // All attempts failed
                     broadcast(downloadId, { type: 'complete', status: 'error', code });
                     setTimeout(() => activeDownloads.delete(downloadId), 10000);
                 }
@@ -185,7 +206,7 @@ exports.startDownload = (req, res) => {
         });
     }
 
-    // Start with Firefox
+    // Start Chain
     startProcess('firefox');
 
     // Respond immediately
